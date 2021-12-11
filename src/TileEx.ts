@@ -1,4 +1,5 @@
 import { ChipSet } from "./chipSets";
+import { TileExRenderer } from "./TileExRenderer";
 
 /**
  * Tileの一つを表すデータ。
@@ -45,109 +46,12 @@ export interface TileExParameterObject extends g.CacheableEParameterObject {
 	tileHeight: number;
 }
 
-export class TileExRenderer {
-	tile: TileEx;
-	dx: number;
-	dy: number;
-	x: number;
-	y: number;
-	renderer: g.Renderer;
-	drawnTileData: TileCell[][];
-	chipSetIndex: number;
-	chipIndex: number;
-
-	constructor(
-		tile: TileEx,
-		renderer: g.Renderer,
-		drawnTileData: TileCell[][]
-	) {
-		this.tile = tile;
-		this.renderer = renderer;
-		this.drawnTileData = drawnTileData;
-
-		this.dx = -1;
-		this.dy = -1;
-		this.x = -1;
-		this.y = -1;
-		this.chipIndex = -1;
-		this.chipSetIndex = -1;
-	}
-
-	getChip(x: number, y: number): TileCell | null {
-		if (x < 0 || y < 0) return null;
-		if (y >= this.tile.tileData.length) return null;
-		if (x >= this.tile.tileData[y].length) return null;
-		return this.tile.tileData[y][x];
-	}
-
-	render(x: number, y: number) {
-		this.x = x;
-		this.y = y;
-		const tile = this.tile.tileData[y][x];
-		if (tile == null) {
-			return false;
-		}
-
-		this.chipSetIndex = tile[0];
-		if (this.chipSetIndex < 0) {
-			return false;
-		}
-
-		const chipSet = this.tile.chipSets[this.chipSetIndex];
-		if (chipSet == null) {
-			throw new Error("Invalid chipset");
-		}
-
-		this.chipIndex = tile[1];
-		if (this.chipIndex < 0) {
-			return false;
-		}
-
-		if (this.drawnTileData[y] !== undefined) {
-			if (
-				this.drawnTileData[y][x][0] === this.chipSetIndex &&
-				this.drawnTileData[y][x][1] === this.chipIndex
-			) {
-				return false;
-			}
-		}
-
-		let dx = this.tile.tileWidth * x;
-		let dy = this.tile.tileHeight * y;
-		if (
-			chipSet.chipWidth !== this.tile.tileWidth ||
-			chipSet.chipHeight !== this.tile.tileHeight
-		) {
-			dx -= chipSet.chipWidth - this.tile.tileWidth;
-			dy -= chipSet.chipHeight - this.tile.tileHeight;
-		}
-
-		if (this.tile.redrawArea) {
-			if (
-				dx + chipSet.chipWidth < this.tile.redrawArea.x ||
-				dx >= this.tile.redrawArea.x + this.tile.redrawArea.width ||
-				dy + chipSet.chipHeight < this.tile.redrawArea.y ||
-				dy >= this.tile.redrawArea.y + this.tile.redrawArea.height
-			) {
-				return false;
-			}
-		}
-
-		this.dx = dx;
-		this.dy = dy;
-		chipSet.render(this);
-		this.drawnTileData[y][x] = [tile[0], tile[1]];
-
-		return true;
-	}
-}
-
 export class TileEx extends g.CacheableE {
 	chipSets: ChipSet[];
 
 	tileData: TileCell[][];
 
-	_drawnTileData: TileCell[][];
+	_drawnTileData: number[][];
 
 	tileWidth: number;
 	tileHeight: number;
@@ -190,7 +94,7 @@ export class TileEx extends g.CacheableE {
 				for (var y = 0; y < this.tileData.length; ++y) {
 					this._drawnTileData[y] = [];
 					for (var x = 0; x < this.tileData[y].length; ++x) {
-						this._drawnTileData[y][x] = [-1, -1];
+						this._drawnTileData[y][x] = -1;
 					}
 				}
 			}
@@ -218,14 +122,54 @@ export class TileEx extends g.CacheableE {
 		return this._shouldRenderChildren;
 	}
 
+	/**
+	 * 対象個所のチップを切り替える。
+	 * @param y Y座標
+	 * @param x X座標
+	 * @param chip チップ番号
+	 */
+	setChip(y: number, x: number, chip: number) {
+		this.tileData[y][x][1] = chip;
+	}
+
+	/**
+	 * 対象個所のチップセットを切り替える。
+	 * チップセットは本メソッド経由で切り替えないとinvalidateを呼んでも更新されない点に注意。
+	 * @param y Y座標
+	 * @param x X座標
+	 * @param chipSetIndex チップセットのindex
+	 */
+	setChipSet(y: number, x: number, chipSetIndex: number) {
+		this.tileData[y][x][0] = chipSetIndex;
+		this._drawnTileData[y][x] = -1;
+	}
+
+	/**
+	 * 対象個所のチップを切り替え、周辺を再描画する。
+	 * オートタイルの場合、本メソッド経由で更新しないと正しく反映されない点に注意。
+	 * @param y Y座標
+	 * @param x X座標
+	 * @param chip チップ番号
+	 */
+	setChipWithNear(y: number, x: number, chip: number) {
+		this.tileData[y][x][1] = chip;
+		for (let i = y - 1; i <= y + 1; i++) {
+			if (i < 0) continue;
+			if (i >= this.tileData.length) continue;
+			for (let j = x - 1; j <= x + 1; j++) {
+				if (j < 0) continue;
+				if (j >= this.tileData[i].length) continue;
+				this._drawnTileData[i][j] = -1;
+			}
+		}
+	}
+
 	renderCache(renderer: g.Renderer): void {
 		if (!this.tileData)
 			throw g.ExceptionFactory.createAssertionError(
 				"TileEx#_renderCache: don't have a tile data"
 			);
 		renderer.save();
-		renderer.clear();
-		renderer.setCompositeOperation("source-over");
 
 		const tileRenderer = new TileExRenderer(
 			this,
@@ -255,5 +199,17 @@ export class TileEx extends g.CacheableE {
 		this._drawnTileData = undefined;
 		this.redrawArea = undefined;
 		super.destroy();
+	}
+
+	/**
+	 * 全タイルを強制的に再描画した上で、invalidateを呼び出す。
+	 */
+	fullInvalidate() {
+		for (var y = 0; y < this.tileData.length; ++y) {
+			for (var x = 0; x < this.tileData[y].length; ++x) {
+				this._drawnTileData[y][x] = -1;
+			}
+		}
+		this.invalidate();
 	}
 }

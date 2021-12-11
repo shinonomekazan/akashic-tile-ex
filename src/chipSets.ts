@@ -1,4 +1,4 @@
-import { TileExRenderer } from "./TileEx";
+import { TileExRenderer } from "./TileExRenderer";
 
 export interface ChipSetParameterObject {
 	/**
@@ -102,24 +102,31 @@ export class WolfAutoTileChipSet extends ChipSet {
 					tileRenderer.getChip(nx, ny),
 				];
 				let offset = 0;
+				// ウディタの仕様では、オートタイルは必ず同一種なので、chipSetIndexが同一なら同一と判定
+				// アニメーションがずれると壊れてしまうが、呼び出し元で担保してもらうようにする
 				if (
 					nearTiles[0] != null &&
 					nearTiles[0][0] === tileRenderer.chipSetIndex &&
-					nearTiles[0][1] === chip
+					nearTiles[0][1] >= 0
+					// nearTiles[0][0] === tileRenderer.chipSetIndex &&
+					// nearTiles[0][1] === chip
 				) {
 					offset += 1;
 				}
 				if (
 					nearTiles[1] != null &&
 					nearTiles[1][0] === tileRenderer.chipSetIndex &&
-					nearTiles[1][1] === chip
+					nearTiles[1][1] >= 0
+					// nearTiles[1][0] === tileRenderer.chipSetIndex &&
+					// nearTiles[1][1] === chip
 				) {
 					offset += 2;
 				}
 				if (
 					nearTiles[2] != null &&
 					nearTiles[2][0] === tileRenderer.chipSetIndex &&
-					nearTiles[2][1] === chip &&
+					nearTiles[2][1] >= 0 &&
+					// nearTiles[2][1] === chip &&
 					offset === 3
 				) {
 					offset += 1;
