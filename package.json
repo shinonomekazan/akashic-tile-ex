@@ -1,0 +1,36 @@
+{
+	"name": "akashic-tile-ex",
+	"version": "0.1.0",
+	"main": "build/index.js",
+	"files": [
+		"build/index.js",
+		"build/index.d.ts"
+	],
+	"scripts": {
+		"clean": "rimraf ./build",
+		"build": "tsc",
+		"prettier:check": "prettier --check .",
+		"prettier:write": "prettier --write .",
+		"lint": "npm run prettier:check",
+		"lint:fix": "npm run prettier:write",
+		"test": "npm run lint"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/shinonomekazan/akashic-wolf-autotile.git"
+	},
+	"author": "Shinonomekazan Co., Ltd.",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/shinonomekazan/akashic-wolf-autotile/issues"
+	},
+	"homepage": "https://github.com/shinonomekazan/akashic-wolf-autotile#readme",
+	"devDependencies": {
+		"@akashic/akashic-engine": "^3.2.0",
+		"prettier": "^2.4.1",
+		"rimraf": "^3.0.2",
+		"typescript": "^4.4.4"
+	},
+	"dependencies": {},
+	"typings": "build/index.d.ts"
+}
