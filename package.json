@@ -3,8 +3,7 @@
 	"version": "0.1.0",
 	"main": "build/index.js",
 	"files": [
-		"build/index.js",
-		"build/index.d.ts"
+		"build"
 	],
 	"scripts": {
 		"clean": "rimraf ./build",
